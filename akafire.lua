@@ -105,21 +105,21 @@ local function createAfterImagesAlongPath(startPos, endPos)
 end
 
 -- 이펙트 활성화/비활성화 함수
-local function activateEffects()
-    -- 캐릭터가 보는 방향으로 이펙트 설정
-    local lookDirection = rootPart.CFrame.LookVector -- 방향을 캐릭터가 보는 방향으로 설정
+local function activateEffects(offsetX, offsetZ, angleOffset)
+    -- 캐릭터가 보는 방향을 기준으로 랜덤 방향 설정
+    local lookDirection = rootPart.CFrame.LookVector
+    -- 방향을 회전시키기 위해 Y축 기준으로 각도 조정
+    local rotatedDirection = CFrame.Angles(0, math.rad(angleOffset), 0) * lookDirection
     sparks.EmissionDirection = Enum.NormalId.Front
-    attachment.WorldCFrame = CFrame.new(rootPart.Position + Vector3.new(0, 0, -2)) * CFrame.lookAt(Vector3.new(0, 0, 0), lookDirection)
+    -- 시작 위치를 약간 변화시킴
+    attachment.WorldCFrame = CFrame.new(rootPart.Position + Vector3.new(offsetX, 0, offsetZ - 2)) * CFrame.lookAt(Vector3.new(0, 0, 0), rotatedDirection)
 
     -- 이펙트 활성화
     sparks.Enabled = true
 
-    -- 화면 반전 효과 적용
-    applyScreenFlash()
-
     -- 이펙트 경로 계산 및 잔상 생성
-    local startPos = rootPart.Position + Vector3.new(0, 0, -2)
-    local endPos = startPos + (lookDirection * maxDistance)
+    local startPos = rootPart.Position + Vector3.new(offsetX, 0, offsetZ - 2)
+    local endPos = startPos + (rotatedDirection * maxDistance)
     createAfterImagesAlongPath(startPos, endPos)
 
     -- 짧은 시간 후 Rate를 0으로 설정해 추가 방출 방지
@@ -138,8 +138,21 @@ local function deactivateEffects()
     sparks.Rate = 700
 end
 
--- 스크립트 시작 시 이펙트 자동 활성화
-activateEffects()
+-- 70번 이펙트와 화면 반전 효과를 한 번에 실행
+for i = 1, 70 do
+    -- 화면 반전 효과 병렬 실행
+    task.spawn(function()
+        applyScreenFlash()
+    end)
+    
+    -- 이펙트를 병렬 실행하며 위치와 방향을 약간 변화
+    local offsetX = math.random(-5, 5) -- X축 위치 랜덤 조정
+    local offsetZ = math.random(-5, 5) -- Z축 위치 랜덤 조정
+    local angleOffset = math.random(-180, 180) -- 방향 랜덤 회전 (도 단위)
+    task.spawn(function()
+        activateEffects(offsetX, offsetZ, angleOffset)
+    end)
+end
 
 -- 캐릭터 리셋 시 이펙트 다시 설정
 player.CharacterAdded:Connect(function(newCharacter)
@@ -156,6 +169,17 @@ player.CharacterAdded:Connect(function(newCharacter)
     -- 이펙트 비활성화 상태로 초기화
     deactivateEffects()
     
-    -- 캐릭터 리셋 후 이펙트 자동 활성화
-    activateEffects()
+    -- 캐릭터 리셋 후 이펙트와 화면 반전 효과를 다시 70번 실행
+    for i = 1, 70 do
+        task.spawn(function()
+            applyScreenFlash()
+        end)
+        
+        local offsetX = math.random(-5, 5)
+        local offsetZ = math.random(-5, 5)
+        local angleOffset = math.random(-180, 180)
+        task.spawn(function()
+            activateEffects(offsetX, offsetZ, angleOffset)
+        end)
+    end
 end)
